@@ -1,0 +1,30 @@
+Contrat de commission portant dépôt d'Œuvres d'art à la galerie UKA en vue de leur vente
+
+LE PRESENT CONTRAT EST PASSE ENTRE :
+
+L’ARTISTE : 
+SIRET : {{siret}}
+
+NOM : {{artist_name}}
+ADRESSE : {{adresse}}
+
+ET
+
+LA GALERIE D’ART/ BOUTIK UKA
+
+ADRESSE :	 6-7 LES POIRIERS, LA MARINA, 97110 POINTE A PITRE
+SIREN :	829 320 670 000 13
+
+PREAMBULE :
+La Galerie d'art entend vendre les œuvres d'art de l'artiste ;
+En fait de quoi, les parties s'entendent sur ce qui suit :
+[...]
+
+ŒUVRES CONFIEES A LA GALERIE UKA
+NOM DE L’ŒUVRE | DIMENSIONS | ANNEE REALISATION | PRIX DEMANDE PAR L’ARTISTE | % GALERIE +FRAIS (40%) | PRIX DE VENTE
+{% for work in works %}
+{{work.nom_oeuvre}} | {{work.dimensions}} | {{work.annee}} | {{work.prix_artiste}} | {{work.prix_commission}} | {{work.prix_vente}}
+{% endfor %}
+
+Fais-le, {{date}} à Pointe à Pitre.
+L'Artiste                              La Galerie d'art

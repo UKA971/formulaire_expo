@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulaire d'œuvres</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .form-section {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input,
+        select {
+            padding: 10px;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+
+        h2 {
+            margin-top: 30px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Formulaire d'œuvres</h1>
+
+    <form id="artForm" enctype="multipart/form-data">
+        <div class="form-section">
+            <label for="artistName">Nom de l'artiste</label>
+            <input type="text" id="artistName" name="artistName" required>
+        </div>
+
+        <div class="form-section">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+
+        <div class="form-section">
+            <label for="siret">SIRET</label>
+            <input type="text" id="siret" name="siret" required>
+        </div>
+
+        <div class="form-section">
+            <label for="adresse">Adresse</label>
+            <input type="text" id="adresse" name="adresse" required>
+        </div>
+
+        <div class="form-section">
+            <label for="numWorks">Combien d'œuvres souhaitez-vous exposer ?</label>
+            <input type="number" id="numWorks" name="numWorks" min="1" max="50" required>
+        </div>
+
+        <div id="worksSection"></div>
+
+        <button type="submit">Envoyer</button>
+    </form>
+
+    <script>
+        document.getElementById('numWorks').addEventListener('input', function () {
+            const numWorks = parseInt(this.value);
+            const worksSection = document.getElementById('worksSection');
+            worksSection.innerHTML = '';
+            if (numWorks > 0) {
+                for (let i = 1; i <= numWorks; i++) {
+                    const workContainer = document.createElement('div');
+                    workContainer.classList.add('form-section');
+
+                    const sectionTitle = document.createElement('h2');
+                    sectionTitle.textContent = `Œuvre ${i}`;
+                    workContainer.appendChild(sectionTitle);
+
+                    const nameLabel = document.createElement('label');
+                    nameLabel.textContent = `Nom de l'œuvre ${i}`;
+                    const nameInput = document.createElement('input');
+                    nameInput.type = 'text';
+                    nameInput.name = `nomOeuvre${i}`;
+                    nameInput.required = true;
+                    workContainer.appendChild(nameLabel);
+                    workContainer.appendChild(nameInput);
+
+                    const techniquesLabel = document.createElement('label');
+                    techniquesLabel.textContent = `Techniques utilisées pour l'œuvre ${i}`;
+                    const techniquesInput = document.createElement('input');
+                    techniquesInput.type = 'text';
+                    techniquesInput.name = `techniquesOeuvre${i}`;
+                    techniquesInput.required = true;
+                    workContainer.appendChild(techniquesLabel);
+                    workContainer.appendChild(techniquesInput);
+
+                    const dimensionsLabel = document.createElement('label');
+                    dimensionsLabel.textContent = `Dimensions de l'œuvre ${i} (en cm)`;
+                    const dimensionsInput = document.createElement('input');
+                    dimensionsInput.type = 'text';
+                    dimensionsInput.name = `dimensionsOeuvre${i}`;
+                    dimensionsInput.required = true;
+                    workContainer.appendChild(dimensionsLabel);
+                    workContainer.appendChild(dimensionsInput);
+
+                    const yearLabel = document.createElement('label');
+                    yearLabel.textContent = `Année de réalisation de l'œuvre ${i}`;
+                    const yearInput = document.createElement('input');
+                    yearInput.type = 'number';
+                    yearInput.name = `anneeOeuvre${i}`;
+                    yearInput.min = '1000';
+                    yearInput.max = new Date().getFullYear().toString();
+                    yearInput.required = true;
+                    workContainer.appendChild(yearLabel);
+                    workContainer.appendChild(yearInput);
+
+                    const priceLabel = document.createElement('label');
+                    priceLabel.textContent = `Prix demandé pour l'œuvre ${i} (€)`;
+                    const priceInput = document.createElement('input');
+                    priceInput.type = 'number';
+                    priceInput.name = `prixOeuvre${i}`;
+                    priceInput.min = '0';
+                    priceInput.required = true;
+                    workContainer.appendChild(priceLabel);
+                    workContainer.appendChild(priceInput);
+
+                    for (let j = 1; j <= 3; j++) {
+                        const photoLabel = document.createElement('label');
+                        photoLabel.textContent = `Photo ${j} de l'œuvre ${i}`;
+                        const photoInput = document.createElement('input');
+                        photoInput.type = 'file';
+                        photoInput.name = `photoOeuvre${i}_${j}`;
+                        photoInput.accept = "image/*";
+                        workContainer.appendChild(photoLabel);
+                        workContainer.appendChild(photoInput);
+                    }
+                    worksSection.appendChild(workContainer);
+                }
+            }
+        });
+
+        document.getElementById('artForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const formData = new FormData(this);
+
+            fetch('/submit', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "success") {
+                        window.location.href = data.redirect_url;
+                    } else {
+                        alert('Erreur : ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Erreur lors de la soumission du formulaire');
+                });
+        });
+    </script>
+
+</body>
+
+</html>

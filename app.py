@@ -26,6 +26,14 @@ CONTRACTS_DRIVE_FOLDER_ID = '1RxN8sYGeECGGVOZlUF6yWwnVPU5Bp_gR'
 PHOTOS_DRIVE_FOLDER_ID = '1IGERMj2fWN0uiKsg_y8RFIa3xgPPmVXN'
 SPREADSHEET_ID = '16baOxeVOUcioLiEzfAwyedM5veJnOnxplKVIc2dNwtc'
 
+# Vérification des variables d'environnement
+google_private_key = os.getenv("GOOGLE_PRIVATE_KEY")
+if google_private_key is None:
+    raise ValueError("La variable d'environnement GOOGLE_PRIVATE_KEY n'est pas définie.")
+    
+# Remplacer les caractères de nouvelle ligne
+google_private_key = google_private_key.replace('\\n', '\n')
+
 # Charger les identifiants à partir d'une variable d'environnement
 creds = Credentials.from_service_account_info(
     {

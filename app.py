@@ -7,6 +7,8 @@ from googleapiclient.http import MediaFileUpload
 from dotenv import load_dotenv
 import base64
 from fpdf import FPDF
+from google.oauth2 import service_account
+
 
 load_dotenv()
 
@@ -45,19 +47,21 @@ def fix_private_key(key_str):
     return key_str
 
 def setup_google_credentials():
-    """Configure les credentials Google avec gestion améliorée des erreurs"""
     try:
+        # Obtenez la clé privée depuis l'environnement
         google_private_key = os.getenv("GOOGLE_PRIVATE_KEY")
         if not google_private_key:
             raise ValueError("GOOGLE_PRIVATE_KEY environment variable is not set")
         
-        fixed_private_key = fix_private_key(google_private_key)
-        
-        creds = Credentials.from_service_account_info({
-            "type": os.getenv("GOOGLE_SERVICE_ACCOUNT_TYPE"),
+        # Remplacer les séquences \n par des retours à la ligne réels
+        google_private_key = google_private_key.replace('\\n', '\n')
+
+        # Configurez les identifiants
+        creds = service_account.Credentials.from_service_account_info({
+            "type": "service_account",
             "project_id": os.getenv("GOOGLE_PROJECT_ID"),
             "private_key_id": os.getenv("GOOGLE_PRIVATE_KEY_ID"),
-            "private_key": fixed_private_key,
+            "private_key": google_private_key,
             "client_email": os.getenv("GOOGLE_CLIENT_EMAIL"),
             "client_id": os.getenv("GOOGLE_CLIENT_ID"),
             "auth_uri": os.getenv("GOOGLE_AUTH_URI"),

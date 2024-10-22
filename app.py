@@ -3,18 +3,9 @@ import os
 from datetime import datetime
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
-from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.platypus import Table, TableStyle
-from reportlab.lib import colors
-from PIL import Image
-import io
-from reportlab.lib.utils import ImageReader
-import base64
-from PyPDF2 import PdfReader, PdfWriter
-import re
+from googleapiclient.http import MediaFileUpload
 from dotenv import load_dotenv  # Importation de dotenv
+import base64
 
 load_dotenv()  # Chargement des variables d'environnement
 
@@ -54,8 +45,6 @@ creds = Credentials.from_service_account_info(
     }
 )
 
-# Fonctions pour Google Drive et Google Sheets...
-
 def create_drive_folder(drive_service, folder_name, parent_folder_id=None):
     folder_metadata = {
         'name': folder_name,
@@ -65,7 +54,22 @@ def create_drive_folder(drive_service, folder_name, parent_folder_id=None):
     folder = drive_service.files().create(body=folder_metadata, fields='id').execute()
     return folder.get('id')
 
-# Reste des fonctions (upload_file_to_drive, add_data_to_sheets, etc.)
+def upload_file_to_drive(drive_service, file_path, parent_folder_id, file_name):
+    file_metadata = {
+        'name': file_name,
+        'parents': [parent_folder_id]
+    }
+    media = MediaFileUpload(file_path)
+    file = drive_service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
+    return file
+
+def add_data_to_sheets(form_data, works, date):
+    # Cette fonction doit être implémentée pour ajouter des données dans Google Sheets
+    pass
+
+def generate_contract_pdf(form_data, works, date, drive_service):
+    # Cette fonction doit être implémentée pour générer un PDF du contrat
+    return "path/to/generated_contract.pdf"
 
 @app.route('/')
 def form():
@@ -84,7 +88,7 @@ def submit():
         artist_name = form_data.get('artistName')
         artist_folder_id = create_drive_folder(drive_service, artist_name, parent_folder_id=PHOTOS_DRIVE_FOLDER_ID)
         works = []
-        num_works = int(form_data.get('numWorks'))
+        num_works = int(form_data.get('numWorks', 0))
         for i in range(1, num_works + 1):
             work = {
                 'nom_oeuvre': form_data.get(f'nomOeuvre{i}'),
@@ -144,14 +148,12 @@ def save_signed_contract():
         header, encoded = signature_data_url.split(",", 1)
         signature_data = base64.b64decode(encoded)
         
-        # Reste du code...
+        # Reste du code pour sauvegarder la signature...
         
     except Exception as e:
         import traceback
         print(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)})
 
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))  # 5000 est le port par défaut
-

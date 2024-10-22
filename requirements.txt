@@ -6,6 +6,7 @@ google-auth-oauthlib==1.1.0
 reportlab==4.0.7
 Pillow==10.1.0
 PyPDF2==3.0.1
+fpdf==1.7.2
 gunicorn==21.2.0
 Werkzeug==2.3.7
 python-dotenv==1.0.0

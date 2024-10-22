@@ -14,7 +14,7 @@ from reportlab.lib.utils import ImageReader
 import base64
 from PyPDF2 import PdfReader, PdfWriter
 import re
-from werkzeug.utils import quote as url_quote
+from urllib.parse import quote as url_quote
 
 
 app = Flask(__name__)

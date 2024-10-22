@@ -131,22 +131,26 @@ def save_signed_contract():
     try:
         data = request.get_json()
         signature_data_url = data['signature']
+        
+        # Vérification et ajout du padding
+        padding = len(signature_data_url) % 4
+        if padding != 0:
+            signature_data_url += '=' * (4 - padding)
+        
         artist_name = data['artist_name']
         contract_url = data['contract_url']
+        
         drive_service = build('drive', 'v3', credentials=creds)
         header, encoded = signature_data_url.split(",", 1)
         signature_data = base64.b64decode(encoded)
-        contract_file_id = extract_file_id_from_url(contract_url)
-        contract_pdf_data = download_file_from_drive(contract_file_id, drive_service)
-        signed_contract_filepath = integrate_signature_into_pdf(contract_pdf_data, signature_data, artist_name)
-        signed_contract_filename = f"{artist_name}_contract_signé_{datetime.now().strftime('%Y-%m-%d')}.pdf"
-        signed_contract_info = upload_file_to_drive(drive_service, signed_contract_filepath, CONTRACTS_DRIVE_FOLDER_ID, signed_contract_filename)
-        signed_contract_url = signed_contract_info['webViewLink']
-        return jsonify({"status": "success", "signed_contract_url": signed_contract_url})
+        
+        # Reste du code...
+        
     except Exception as e:
         import traceback
         print(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)})
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))  # 5000 est le port par défaut

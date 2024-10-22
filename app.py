@@ -14,6 +14,9 @@ from reportlab.lib.utils import ImageReader
 import base64
 from PyPDF2 import PdfReader, PdfWriter
 import re
+from dotenv import load_dotenv  # Importation de dotenv
+
+load_dotenv()  # Chargement des variables d'environnement
 
 app = Flask(__name__)
 
@@ -22,25 +25,26 @@ GENERATED_CONTRACTS_FOLDER = 'generated_contracts'
 if not os.path.exists(GENERATED_CONTRACTS_FOLDER):
     os.makedirs(GENERATED_CONTRACTS_FOLDER)
 
-CONTRACTS_DRIVE_FOLDER_ID = '1RxN8sYGeECGGVOZlUF6yWwnVPU5Bp_gR'
-PHOTOS_DRIVE_FOLDER_ID = '1IGERMj2fWN0uiKsg_y8RFIa3xgPPmVXN'
-SPREADSHEET_ID = '16baOxeVOUcioLiEzfAwyedM5veJnOnxplKVIc2dNwtc'
+# Chargement des identifiants depuis les variables d'environnement
+CONTRACTS_DRIVE_FOLDER_ID = os.getenv('CONTRACTS_DRIVE_FOLDER_ID')
+PHOTOS_DRIVE_FOLDER_ID = os.getenv('PHOTOS_DRIVE_FOLDER_ID')
+SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
 
-# Vérification des variables d'environnement
+# Vérification des variables d'environnement pour Google
 google_private_key = os.getenv("GOOGLE_PRIVATE_KEY")
 if google_private_key is None:
     raise ValueError("La variable d'environnement GOOGLE_PRIVATE_KEY n'est pas définie.")
-    
+
 # Remplacer les caractères de nouvelle ligne
 google_private_key = google_private_key.replace('\\n', '\n')
 
-# Charger les identifiants à partir d'une variable d'environnement
+# Charger les identifiants Google
 creds = Credentials.from_service_account_info(
     {
         "type": os.getenv("GOOGLE_SERVICE_ACCOUNT_TYPE"),
         "project_id": os.getenv("GOOGLE_PROJECT_ID"),
         "private_key_id": os.getenv("GOOGLE_PRIVATE_KEY_ID"),
-        "private_key": os.getenv("GOOGLE_PRIVATE_KEY").replace('\\n', '\n'),
+        "private_key": google_private_key,
         "client_email": os.getenv("GOOGLE_CLIENT_EMAIL"),
         "client_id": os.getenv("GOOGLE_CLIENT_ID"),
         "auth_uri": os.getenv("GOOGLE_AUTH_URI"),

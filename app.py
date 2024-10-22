@@ -140,20 +140,18 @@ def save_signed_contract():
         padding = len(signature_data_url) % 4
         if padding != 0:
             signature_data_url += '=' * (4 - padding)
-        
-        artist_name = data['artist_name']
-        contract_url = data['contract_url']
-        
-        drive_service = build('drive', 'v3', credentials=creds)
+
+        # Extraire le contenu de la signature
         header, encoded = signature_data_url.split(",", 1)
         signature_data = base64.b64decode(encoded)
-        
-        # Reste du code pour sauvegarder la signature...
-        
+
+        # Code pour sauvegarder la signature ici...
+
     except Exception as e:
         import traceback
         print(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)})
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))  # 5000 est le port par défaut

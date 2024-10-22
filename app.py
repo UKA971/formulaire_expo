@@ -27,8 +27,13 @@ if google_private_key is None:
     raise ValueError("La variable d'environnement GOOGLE_PRIVATE_KEY n'est pas définie.")
 
 # Remplacer les caractères de nouvelle ligne
-google_private_key = google_private_key.replace('\\n', '\n')
-
+# Modification du traitement de la clé privée
+google_private_key = os.getenv("GOOGLE_PRIVATE_KEY")
+if google_private_key:
+    # Supprimer les guillemets de début et de fin si présents
+    google_private_key = google_private_key.strip('"')
+    # Remplacer les \n par des sauts de ligne réels
+    google_private_key = google_private_key.replace('\\n', '\n')
 # Charger les identifiants Google
 creds = Credentials.from_service_account_info(
     {

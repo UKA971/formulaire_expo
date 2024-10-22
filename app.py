@@ -42,18 +42,7 @@ def fix_private_key(key_str):
     if '-----END PRIVATE KEY-----' not in key_str:
         key_str = key_str + '\n-----END PRIVATE KEY-----'
     
-    # Assure-toi que chaque ligne a la bonne longueur
-    parts = key_str.split('\n')
-    formatted_parts = []
-    for part in parts:
-        if part.strip() and not part.startswith('-----') and not part.endswith('-----'):
-            # Ajoute le padding si nécessaire
-            padding = len(part) % 4
-            if padding:
-                part += '=' * (4 - padding)
-        formatted_parts.append(part)
-    
-    return '\n'.join(formatted_parts)
+    return key_str
 
 def setup_google_credentials():
     """Configure les credentials Google avec gestion améliorée des erreurs"""
@@ -63,10 +52,6 @@ def setup_google_credentials():
             raise ValueError("GOOGLE_PRIVATE_KEY environment variable is not set")
         
         fixed_private_key = fix_private_key(google_private_key)
-        
-        # Debug logging
-        print("Formatted key start:", fixed_private_key[:50])
-        print("Formatted key end:", fixed_private_key[-50:])
         
         creds = Credentials.from_service_account_info({
             "type": os.getenv("GOOGLE_SERVICE_ACCOUNT_TYPE"),
@@ -83,10 +68,6 @@ def setup_google_credentials():
         return creds
     except Exception as e:
         print(f"Error initializing credentials: {str(e)}")
-        # Debug logging des variables d'environnement (sauf la clé privée)
-        for key, value in os.environ.items():
-            if 'PRIVATE' not in key.upper():
-                print(f"{key}: {value[:20]}..." if value else f"{key}: None")
         raise
 
 def add_data_to_sheets(form_data, works, date):
@@ -124,7 +105,7 @@ def add_data_to_sheets(form_data, works, date):
         print(f"Erreur lors de l'ajout des données dans Sheets: {str(e)}")
         raise
 
-def generate_contract_pdf(form_data, works, date, drive_service):
+def generate_contract_pdf(form_data, works, date):
     """Génère le PDF du contrat"""
     try:
         pdf = FPDF()
@@ -187,7 +168,7 @@ def submit():
         form_data = form_data.copy()
         form_data['email'] = email
 
-        # Initialisation du service Drive avec les credentials améliorés
+        # Initialisation du service Drive avec les credentials
         creds = setup_google_credentials()
         drive_service = build('drive', 'v3', credentials=creds)
         
@@ -225,7 +206,7 @@ def submit():
             works.append(work)
             
         add_data_to_sheets(form_data, works, date)
-        contract_filepath = generate_contract_pdf(form_data, works, date, drive_service)
+        contract_filepath = generate_contract_pdf(form_data, works, date)
         contract_info = upload_file_to_drive(drive_service, contract_filepath, CONTRACTS_DRIVE_FOLDER_ID, os.path.basename(contract_filepath))
         contract_url = contract_info['webViewLink']
         
@@ -237,38 +218,11 @@ def submit():
     except Exception as e:
         import traceback
         print(traceback.format_exc())
-        return jsonify({"status": "error", "message": str(e)})
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/sign_contract')
-def sign_contract():
-    contract_url = request.args.get('contract_url')
-    artist_name = request.args.get('artist_name')
+@app.route('/sign/<path:contract_url>/<artist_name>', methods=['GET', 'POST'])
+def sign_contract(contract_url, artist_name):
     return render_template('sign_contract.html', contract_url=contract_url, artist_name=artist_name)
-
-@app.route('/save_signed_contract', methods=['POST'])
-def save_signed_contract():
-    try:
-        data = request.get_json()
-        signature_data_url = data['signature']
-        
-        # Vérification et ajout du padding
-        padding = len(signature_data_url) % 4
-        if padding != 0:
-            signature_data_url += '=' * (4 - padding)
-
-        # Extraire le contenu de la signature
-        header, encoded = signature_data_url.split(",", 1)
-        signature_data = base64.b64decode(encoded)
-        
-        # Code pour sauvegarder la signature...
-        # À implémenter selon vos besoins
-        
-        return jsonify({"status": "success"})
-        
-    except Exception as e:
-        import traceback
-        print(traceback.format_exc())
-        return jsonify({"status": "error", "message": str(e)})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))

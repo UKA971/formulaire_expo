@@ -149,4 +149,5 @@ def save_signed_contract():
         return jsonify({"status": "error", "message": str(e)})
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))  # 5000 est le port par défaut
+

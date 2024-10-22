@@ -7,6 +7,14 @@ from googleapiclient.http import MediaFileUpload
 from dotenv import load_dotenv  # Importation de dotenv
 import base64
 
+print("Variables d'environnement disponibles:")
+for key in ["GOOGLE_PRIVATE_KEY", "GOOGLE_CLIENT_EMAIL", "GOOGLE_PROJECT_ID"]:
+    value = os.getenv(key)
+    if value:
+        print(f"{key}: {value[:10]}...")
+    else:
+        print(f"{key}: Non définie")
+
 load_dotenv()  # Chargement des variables d'environnement
 
 app = Flask(__name__)
@@ -26,29 +34,37 @@ google_private_key = os.getenv("GOOGLE_PRIVATE_KEY")
 if google_private_key is None:
     raise ValueError("La variable d'environnement GOOGLE_PRIVATE_KEY n'est pas définie.")
 
-# Remplacer les caractères de nouvelle ligne
-# Modification du traitement de la clé privée
+# Avant les credentials
 google_private_key = os.getenv("GOOGLE_PRIVATE_KEY")
 if google_private_key:
-    # Supprimer les guillemets de début et de fin si présents
-    google_private_key = google_private_key.strip('"')
-    # Remplacer les \n par des sauts de ligne réels
+    # Nettoyage de la clé
     google_private_key = google_private_key.replace('\\n', '\n')
-# Charger les identifiants Google
-creds = Credentials.from_service_account_info(
-    {
-        "type": os.getenv("GOOGLE_SERVICE_ACCOUNT_TYPE"),
-        "project_id": os.getenv("GOOGLE_PROJECT_ID"),
-        "private_key_id": os.getenv("GOOGLE_PRIVATE_KEY_ID"),
-        "private_key": google_private_key,
-        "client_email": os.getenv("GOOGLE_CLIENT_EMAIL"),
-        "client_id": os.getenv("GOOGLE_CLIENT_ID"),
-        "auth_uri": os.getenv("GOOGLE_AUTH_URI"),
-        "token_uri": os.getenv("GOOGLE_TOKEN_URI"),
-        "auth_provider_x509_cert_url": os.getenv("GOOGLE_AUTH_PROVIDER_CERT_URL"),
-        "client_x509_cert_url": os.getenv("GOOGLE_CLIENT_CERT_URL"),
-    }
-)
+    google_private_key = google_private_key.strip()
+    # Vérification du format
+    if not google_private_key.startswith('-----BEGIN PRIVATE KEY-----'):
+        google_private_key = f"-----BEGIN PRIVATE KEY-----\n{google_private_key}"
+    if not google_private_key.endswith('-----END PRIVATE KEY-----'):
+        google_private_key = f"{google_private_key}\n-----END PRIVATE KEY-----"
+
+try:
+    creds = Credentials.from_service_account_info(
+        {
+            "type": os.getenv("GOOGLE_SERVICE_ACCOUNT_TYPE"),
+            "project_id": os.getenv("GOOGLE_PROJECT_ID"),
+            "private_key_id": os.getenv("GOOGLE_PRIVATE_KEY_ID"),
+            "private_key": google_private_key,
+            "client_email": os.getenv("GOOGLE_CLIENT_EMAIL"),
+            "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+            "auth_uri": os.getenv("GOOGLE_AUTH_URI"),
+            "token_uri": os.getenv("GOOGLE_TOKEN_URI"),
+            "auth_provider_x509_cert_url": os.getenv("GOOGLE_AUTH_PROVIDER_CERT_URL"),
+            "client_x509_cert_url": os.getenv("GOOGLE_CLIENT_CERT_URL"),
+        }
+    )
+except Exception as e:
+    print("Erreur lors de la création des credentials:")
+    print(f"Private key format: {google_private_key[:50]}...{google_private_key[-50:]}")
+    raise
 
 def create_drive_folder(drive_service, folder_name, parent_folder_id=None):
     folder_metadata = {

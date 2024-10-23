@@ -84,6 +84,36 @@ def validate_price(value):
     except ValueError:
         raise ValueError(f"Le prix '{value}' n'est pas valide.")
 
+@app.route('/sign/<path:contract_url>/<artist_name>', methods=['GET', 'POST'])
+def sign_contract(contract_url, artist_name):
+    try:
+        # Ajout d'un log pour voir les paramètres
+        print(f"Contract URL: {contract_url}, Artist Name: {artist_name}")
+
+        if request.method == 'POST':
+            # Log des données envoyées
+            print("Form Data:", request.form)
+            
+            # Vous pouvez ici traiter les informations de signature
+            # Par exemple, sauvegarder la signature de l'artiste ou générer un PDF signé
+            signature_data = request.form.get('signature')
+            if not signature_data:
+                raise ValueError("Signature manquante.")
+            
+            # Exemple : traitement de la signature (si besoin d'en faire quelque chose)
+            # ...
+
+            # Redirection vers la page du contrat signé ou autre
+            return jsonify({"status": "success", "message": "Contract signed successfully."})
+
+        return render_template('sign_contract.html', contract_url=contract_url, artist_name=artist_name)
+
+    except Exception as e:
+        print(f"Erreur lors de la signature du contrat : {str(e)}")
+        traceback.print_exc()  # Détails de l'erreur dans la console
+        return jsonify({"status": "error", "message": str(e), "trace": traceback.format_exc()}), 500
+
+
 def get_current_date():
     gwada_tz = timezone('America/Guadeloupe')
     return datetime.now(gwada_tz).strftime("%Y-%m-%d")

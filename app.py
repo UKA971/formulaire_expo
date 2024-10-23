@@ -2,13 +2,13 @@ from flask import Flask, request, jsonify, render_template, redirect, url_for
 import os
 from datetime import datetime
 from googleapiclient.discovery import build
-from google.oauth2.service_account import Credentials
+from google.oauth2 import service_account
 from googleapiclient.http import MediaFileUpload
 from dotenv import load_dotenv
 import base64
 from fpdf import FPDF
-from google.oauth2 import service_account
-
+import traceback
+from pytz import timezone
 
 load_dotenv()
 
@@ -24,8 +24,12 @@ CONTRACTS_DRIVE_FOLDER_ID = os.getenv('CONTRACTS_DRIVE_FOLDER_ID')
 PHOTOS_DRIVE_FOLDER_ID = os.getenv('PHOTOS_DRIVE_FOLDER_ID')
 SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
 
+def fix_base64_padding(data):
+    """Fix padding issues for Base64 encoded strings."""
+    return data + '=' * (-len(data) % 4)
+
 def fix_private_key(key_str):
-    """Formate correctement la clé privée avec le bon format et padding"""
+    """Formate correctement la clé privée avec le bon format et padding."""
     if not key_str:
         raise ValueError("Private key is empty")
     
@@ -48,15 +52,15 @@ def fix_private_key(key_str):
 
 def setup_google_credentials():
     try:
-        # Obtenez la clé privée depuis l'environnement
         google_private_key = os.getenv("GOOGLE_PRIVATE_KEY")
         if not google_private_key:
             raise ValueError("GOOGLE_PRIVATE_KEY environment variable is not set")
-        
-        # Remplacer les séquences \n par des retours à la ligne réels
-        google_private_key = google_private_key.replace('\\n', '\n')
 
-        # Configurez les identifiants
+        # Correction du padding et format de la clé privée
+        google_private_key = fix_base64_padding(google_private_key)
+        google_private_key = fix_private_key(google_private_key)
+
+        # Configuration des credentials
         creds = service_account.Credentials.from_service_account_info({
             "type": "service_account",
             "project_id": os.getenv("GOOGLE_PROJECT_ID"),
@@ -74,8 +78,17 @@ def setup_google_credentials():
         print(f"Error initializing credentials: {str(e)}")
         raise
 
+def validate_price(value):
+    try:
+        return float(value)
+    except ValueError:
+        raise ValueError(f"Le prix '{value}' n'est pas valide.")
+
+def get_current_date():
+    gwada_tz = timezone('America/Guadeloupe')
+    return datetime.now(gwada_tz).strftime("%Y-%m-%d")
+
 def add_data_to_sheets(form_data, works, date):
-    """Ajoute les données du contrat dans Google Sheets"""
     try:
         creds = setup_google_credentials()
         service = build('sheets', 'v4', credentials=creds)
@@ -110,7 +123,6 @@ def add_data_to_sheets(form_data, works, date):
         raise
 
 def generate_contract_pdf(form_data, works, date):
-    """Génère le PDF du contrat"""
     try:
         pdf = FPDF()
         pdf.add_page()
@@ -148,7 +160,6 @@ def generate_contract_pdf(form_data, works, date):
         pdf.cell(90, 10, 'Le gérant:', 0, 0)
         pdf.cell(90, 10, "L'artiste:", 0, 1)
         
-        # Sauvegarde du PDF
         filename = f"{GENERATED_CONTRACTS_FOLDER}/contrat_{form_data.get('artistName')}_{date}.pdf"
         pdf.output(filename)
         
@@ -167,16 +178,18 @@ def submit():
     try:
         form_data = request.form
         files = request.files
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = get_current_date()
         email = form_data.get('email', 'Inconnu')
         form_data = form_data.copy()
         form_data['email'] = email
 
-        # Initialisation du service Drive avec les credentials
         creds = setup_google_credentials()
         drive_service = build('drive', 'v3', credentials=creds)
         
         artist_name = form_data.get('artistName')
+        if not artist_name or not email:
+            raise ValueError("Les informations de l'artiste sont manquantes.")
+        
         artist_folder_id = create_drive_folder(drive_service, artist_name, parent_folder_id=PHOTOS_DRIVE_FOLDER_ID)
         
         works = []
@@ -186,9 +199,9 @@ def submit():
                 'nom_oeuvre': form_data.get(f'nomOeuvre{i}'),
                 'dimensions': form_data.get(f'dimensionsOeuvre{i}'),
                 'annee': form_data.get(f'anneeOeuvre{i}'),
-                'prix_artiste': form_data.get(f'prixOeuvre{i}'),
-                'prix_commission': float(form_data.get(f'prixOeuvre{i}')) * 0.40,
-                'prix_vente': float(form_data.get(f'prixOeuvre{i}')) * 1.40,
+                'prix_artiste': validate_price(form_data.get(f'prixOeuvre{i}')),
+                'prix_commission': validate_price(form_data.get(f'prixOeuvre{i}')) * 0.40,
+                'prix_vente': validate_price(form_data.get(f'prixOeuvre{i}')) * 1.40,
                 'photos_urls': [],
                 'photos_file_ids': []
             }
@@ -201,32 +214,34 @@ def submit():
                     photo = files[photo_field]
                     if photo.filename != '':
                         photo_filename = photo.filename
-                        photo.save(photo_filename)
-                        photo_info = upload_file_to_drive(drive_service, photo_filename, work_folder_id, photo_filename)
-                        os.remove(photo_filename)
-                        work['photos_urls'].append(photo_info['webViewLink'])
-                        work['photos_file_ids'].append(photo_info['id'])
+                        try:
+                            # Sauvegarde temporaire
+                            photo.save(photo_filename)
+                            # Upload sur Google Drive
+                            photo_info = upload_file_to_drive(drive_service, photo_filename, work_folder_id, photo_filename)
+                            # Nettoyage local du fichier photo
+                            os.remove(photo_filename)
+                            work['photos_urls'].append(photo_info['webViewLink'])
+                            work['photos_file_ids'].append(photo_info['id'])
+                        except Exception as upload_error:
+                            print(f"Erreur lors du téléchargement de {photo_filename} : {str(upload_error)}")
+                            raise
             
             works.append(work)
-            
-        add_data_to_sheets(form_data, works, date)
-        contract_filepath = generate_contract_pdf(form_data, works, date)
-        contract_info = upload_file_to_drive(drive_service, contract_filepath, CONTRACTS_DRIVE_FOLDER_ID, os.path.basename(contract_filepath))
-        contract_url = contract_info['webViewLink']
         
-        return jsonify({
-            "status": "success",
-            "redirect_url": url_for('sign_contract', contract_url=contract_url, artist_name=artist_name)
-        })
+        add_data_to_sheets(form_data, works, date)
+        contract_filename = generate_contract_pdf(form_data, works, date)
+        contract_info = upload_file_to_drive(drive_service, contract_filename, CONTRACTS_DRIVE_FOLDER_ID, contract_filename)
+        
+        if not contract_info or 'webViewLink' not in contract_info:
+            raise ValueError("Erreur lors de la récupération du lien de téléchargement du contrat.")
+        
+        return redirect(contract_info['webViewLink'])
         
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-@app.route('/sign/<path:contract_url>/<artist_name>', methods=['GET', 'POST'])
-def sign_contract(contract_url, artist_name):
-    return render_template('sign_contract.html', contract_url=contract_url, artist_name=artist_name)
+        print(f"Erreur lors du traitement du formulaire : {str(e)}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
+    app.run(debug=True)

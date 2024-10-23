@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <title>Signature du contrat</title>
     <style>
-        /* Styles pour le visualiseur PDF et la zone de signature */
         #pdf-viewer {
             width: 100%;
             height: 600px;
@@ -23,12 +22,19 @@
         #buttons {
             margin-top: 10px;
         }
+
+        #loading-indicator {
+            display: none;
+            font-size: 16px;
+            color: #007BFF;
+            margin-top: 10px;
+        }
     </style>
 </head>
 
 <body>
     <h1>Signature du contrat</h1>
-    <iframe id="pdf-viewer" src="{{ contract_url }}"></iframe>
+    <iframe id="pdf-viewer" src="{{ contract_url }}" frameborder="0" allowfullscreen></iframe>
 
     <h2>Veuillez signer ci-dessous :</h2>
     <canvas id="signature-pad"></canvas>
@@ -36,6 +42,7 @@
         <button id="clear">Effacer</button>
         <button id="save">Signer le contrat</button>
     </div>
+    <p id="loading-indicator">Signature en cours, veuillez patienter...</p>
 
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@2.3.2/dist/signature_pad.min.js"></script>
     <script>
@@ -52,7 +59,11 @@
             } else {
                 var dataURL = signaturePad.toDataURL();
 
-                // Envoyer la signature au serveur
+                // Affiche l'indicateur de chargement
+                var loadingIndicator = document.getElementById('loading-indicator');
+                loadingIndicator.style.display = 'block';
+
+                // Envoie la signature au serveur
                 fetch('/save_signed_contract', {
                     method: 'POST',
                     headers: {
@@ -64,20 +75,21 @@
                         contract_url: "{{ contract_url }}"
                     })
                 })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === "success") {
-                            alert('Contrat signé avec succès !');
-                            // Rediriger vers le contrat signé ou afficher le lien
-                            window.location.href = data.signed_contract_url;
-                        } else {
-                            alert('Erreur : ' + data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erreur:', error);
-                        alert('Erreur lors de la signature du contrat');
-                    });
+                .then(response => response.json())
+                .then(data => {
+                    loadingIndicator.style.display = 'none'; // Masquer l'indicateur de chargement
+                    if (data.status === "success") {
+                        alert('Contrat signé avec succès !');
+                        window.location.href = data.signed_contract_url;
+                    } else {
+                        alert('Erreur : ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    loadingIndicator.style.display = 'none'; // Masquer l'indicateur en cas d'erreur
+                    console.error('Erreur:', error);
+                    alert('Erreur lors de la signature du contrat');
+                });
             }
         });
     </script>

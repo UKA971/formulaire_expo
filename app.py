@@ -183,6 +183,7 @@ def submit():
         form_data = form_data.copy()
         form_data['email'] = email
 
+        # Initialisation des credentials Google
         creds = setup_google_credentials()
         drive_service = build('drive', 'v3', credentials=creds)
         
@@ -190,8 +191,10 @@ def submit():
         if not artist_name or not email:
             raise ValueError("Les informations de l'artiste sont manquantes.")
         
+        # Création du dossier pour l'artiste
         artist_folder_id = create_drive_folder(drive_service, artist_name, parent_folder_id=PHOTOS_DRIVE_FOLDER_ID)
         
+        # Récupération et gestion des œuvres
         works = []
         num_works = int(form_data.get('numWorks', 0))
         for i in range(1, num_works + 1):
@@ -205,9 +208,10 @@ def submit():
                 'photos_urls': [],
                 'photos_file_ids': []
             }
-            
+
+            # Création du dossier pour l'œuvre
             work_folder_id = create_drive_folder(drive_service, work['nom_oeuvre'], parent_folder_id=artist_folder_id)
-            
+
             for j in range(1, 4):
                 photo_field = f'photoOeuvre{i}_{j}'
                 if photo_field in files:
@@ -215,20 +219,20 @@ def submit():
                     if photo.filename != '':
                         photo_filename = photo.filename
                         try:
-                            # Sauvegarde temporaire
+                            # Sauvegarde temporaire du fichier photo
                             photo.save(photo_filename)
-                            # Upload sur Google Drive
+                            # Téléchargement sur Google Drive
                             photo_info = upload_file_to_drive(drive_service, photo_filename, work_folder_id, photo_filename)
-                            # Nettoyage local du fichier photo
                             os.remove(photo_filename)
                             work['photos_urls'].append(photo_info['webViewLink'])
                             work['photos_file_ids'].append(photo_info['id'])
                         except Exception as upload_error:
                             print(f"Erreur lors du téléchargement de {photo_filename} : {str(upload_error)}")
                             raise
-            
+
             works.append(work)
-        
+
+        # Ajout des données dans Google Sheets et génération du contrat
         add_data_to_sheets(form_data, works, date)
         contract_filename = generate_contract_pdf(form_data, works, date)
         contract_info = upload_file_to_drive(drive_service, contract_filename, CONTRACTS_DRIVE_FOLDER_ID, contract_filename)
@@ -237,11 +241,12 @@ def submit():
             raise ValueError("Erreur lors de la récupération du lien de téléchargement du contrat.")
         
         return redirect(contract_info['webViewLink'])
-        
+
     except Exception as e:
         print(f"Erreur lors du traitement du formulaire : {str(e)}")
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        traceback.print_exc()  # Ajoute plus de détails dans la console
+        return jsonify({"status": "error", "message": str(e), "trace": traceback.format_exc()}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
